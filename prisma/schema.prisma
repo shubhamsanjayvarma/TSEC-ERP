@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  password     String
+  role         Role      @default(STUDENT)
+  status       String    @default("active")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  student      Student?
+  faculty      Faculty?
+}
+
+enum Role {
+  ADMIN
+  FACULTY
+  STUDENT
+  ACCOUNTS
+}
+
+model Department {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  code      String    @unique
+  createdAt DateTime  @default(now())
+
+  students  Student[]
+  faculty   Faculty[]
+  subjects  Subject[]
+}
+
+model Student {
+  id           String       @id @default(cuid())
+  rollNumber   String       @unique
+  batch        String
+  semester     Int          @default(1)
+  admissionDate DateTime    @default(now())
+
+  userId       String       @unique
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department   Department   @relation(fields: [departmentId], references: [id])
+
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  marks        Mark[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Faculty {
+  id          String       @id @default(cuid())
+  employeeId  String       @unique
+  designation String       @default("Assistant Professor")
+
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department  Department   @relation(fields: [departmentId], references: [id])
+
+  subjects    SubjectAssignment[]
+  attendances Attendance[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Subject {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  name         String
+  credits      Int          @default(4)
+  semester     Int
+
+  departmentId String
+  department   Department   @relation(fields: [departmentId], references: [id])
+
+  enrollments  Enrollment[]
+  assignments  SubjectAssignment[]
+  attendances  Attendance[]
+  exams        Exam[]
+  createdAt    DateTime     @default(now())
+}
+
+model SubjectAssignment {
+  id        String   @id @default(cuid())
+  facultyId String
+  faculty   Faculty  @relation(fields: [facultyId], references: [id])
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+
+  @@unique([facultyId, subjectId])
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  semester  Int
+
+  @@unique([studentId, subjectId])
+}
+
+model Attendance {
+  id        String          @id @default(cuid())
+  date      DateTime
+  status    AttendanceStatus
+
+  studentId String
+  student   Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject         @relation(fields: [subjectId], references: [id])
+
+  facultyId String
+  faculty   Faculty         @relation(fields: [facultyId], references: [id])
+
+  createdAt DateTime        @default(now())
+
+  @@unique([studentId, subjectId, date])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model Exam {
+  id        String   @id @default(cuid())
+  name      String
+  type      ExamType
+  date      DateTime
+  maxMarks  Int      @default(100)
+
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+
+  marks     Mark[]
+  createdAt DateTime @default(now())
+}
+
+enum ExamType {
+  INTERNAL
+  EXTERNAL
+  PRACTICAL
+  ASSIGNMENT
+}
+
+model Mark {
+  id            String  @id @default(cuid())
+  marksObtained Float
+  grade         String?
+
+  examId    String
+  exam      Exam    @relation(fields: [examId], references: [id])
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([examId, studentId])
+}
+
+model Notice {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  priority  String   @default("normal")
+  targetRole Role?
+  createdBy String
+  createdAt DateTime @default(now())
+}
