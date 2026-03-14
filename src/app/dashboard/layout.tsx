@@ -28,7 +28,7 @@ export default function DashboardLayout({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0f172a",
+          background: "#f6f7f8",
         }}
       >
         <div className="gradient-text" style={{ fontSize: "24px", fontWeight: 700 }}>
@@ -41,11 +41,13 @@ export default function DashboardLayout({
   if (!session) return null;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f6f7f8" }}>
       <Sidebar />
-      <main style={{ flex: 1, marginLeft: "260px" }}>
+      <main style={{ flex: 1, marginLeft: "260px", overflowY: "auto" }}>
         <Navbar />
-        <div style={{ padding: "24px 32px" }}>{children}</div>
+        <div style={{ padding: "24px 32px", maxWidth: "1400px", margin: "0 auto" }}>
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -5,29 +5,29 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const adminLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/dashboard/students", label: "Students", icon: "🎓" },
-  { href: "/dashboard/faculty", label: "Faculty", icon: "👨‍🏫" },
-  { href: "/dashboard/departments", label: "Departments", icon: "🏛️" },
-  { href: "/dashboard/subjects", label: "Subjects", icon: "📚" },
-  { href: "/dashboard/attendance", label: "Attendance", icon: "📋" },
-  { href: "/dashboard/exams", label: "Exams", icon: "📝" },
-  { href: "/dashboard/notices", label: "Notices", icon: "📢" },
+  { href: "/dashboard", label: "Home", icon: "dashboard" },
+  { href: "/dashboard/students", label: "Students", icon: "school" },
+  { href: "/dashboard/faculty", label: "Faculty", icon: "groups" },
+  { href: "/dashboard/departments", label: "Departments", icon: "apartment" },
+  { href: "/dashboard/subjects", label: "Subjects", icon: "book" },
+  { href: "/dashboard/attendance", label: "Attendance", icon: "fact_check" },
+  { href: "/dashboard/exams", label: "Exams", icon: "quiz" },
+  { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
 
 const facultyLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/dashboard/attendance", label: "Mark Attendance", icon: "📋" },
-  { href: "/dashboard/exams", label: "Upload Marks", icon: "📝" },
-  { href: "/dashboard/subjects", label: "My Subjects", icon: "📚" },
-  { href: "/dashboard/notices", label: "Notices", icon: "📢" },
+  { href: "/dashboard", label: "Home", icon: "dashboard" },
+  { href: "/dashboard/attendance", label: "Mark Attendance", icon: "fact_check" },
+  { href: "/dashboard/exams", label: "Upload Marks", icon: "quiz" },
+  { href: "/dashboard/subjects", label: "My Subjects", icon: "book" },
+  { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
 
 const studentLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/dashboard/attendance", label: "Attendance", icon: "📋" },
-  { href: "/dashboard/results", label: "Results", icon: "📝" },
-  { href: "/dashboard/notices", label: "Notices", icon: "📢" },
+  { href: "/dashboard", label: "Home", icon: "dashboard" },
+  { href: "/dashboard/attendance", label: "Attendance", icon: "fact_check" },
+  { href: "/dashboard/results", label: "Results", icon: "leaderboard" },
+  { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
 
 export default function Sidebar() {
@@ -47,9 +47,9 @@ export default function Sidebar() {
       style={{
         width: "260px",
         minHeight: "100vh",
-        background: "#0f172a",
-        borderRight: "1px solid #1e293b",
-        padding: "20px 12px",
+        background: "#ffffff",
+        borderRight: "1px solid #e2e8f0",
+        padding: "16px 16px",
         display: "flex",
         flexDirection: "column",
         position: "fixed",
@@ -63,41 +63,51 @@ export default function Sidebar() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "12px",
-          padding: "8px 12px",
-          marginBottom: "32px",
+          gap: "10px",
+          padding: "4px 8px",
+          marginBottom: "28px",
         }}
       >
         <div
           style={{
             width: "40px",
             height: "40px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+            borderRadius: "10px",
+            background: "#0f172a",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "18px",
-            fontWeight: 800,
-            color: "white",
+            flexShrink: 0,
           }}
         >
-          T
+          <img
+            src="/img/TSEC-logo.webp"
+            alt="TSEC"
+            style={{
+              width: "28px",
+              height: "28px",
+              objectFit: "contain",
+              filter: "brightness(1.2)",
+            }}
+          />
         </div>
         <div>
           <div
             style={{
               fontSize: "16px",
-              fontWeight: 700,
-              color: "#f1f5f9",
+              fontWeight: 800,
+              color: "#0f172a",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
             }}
           >
             TSEC ERP
           </div>
           <div
             style={{
-              fontSize: "11px",
-              color: "#64748b",
+              fontSize: "10px",
+              color: "#94a3b8",
+              fontWeight: 500,
             }}
           >
             College Management
@@ -109,19 +119,18 @@ export default function Sidebar() {
       <nav style={{ flex: 1 }}>
         <div
           style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            color: "#475569",
+            fontSize: "10px",
+            fontWeight: 700,
+            color: "#94a3b8",
             textTransform: "uppercase",
-            letterSpacing: "0.05em",
+            letterSpacing: "0.08em",
             padding: "0 12px",
-            marginBottom: "12px",
+            marginBottom: "8px",
           }}
         >
           Main Menu
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
           {links.map((link) => {
             const isActive =
               pathname === link.href ||
@@ -136,21 +145,26 @@ export default function Sidebar() {
                   alignItems: "center",
                   gap: "12px",
                   padding: "10px 12px",
-                  borderRadius: "10px",
+                  borderRadius: "12px",
                   fontSize: "14px",
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#f1f5f9" : "#94a3b8",
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? "#0f1729" : "#64748b",
                   background: isActive
-                    ? "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))"
+                    ? "rgba(37,99,235,0.06)"
                     : "transparent",
                   textDecoration: "none",
                   transition: "all 0.2s ease",
-                  borderLeft: isActive
-                    ? "3px solid #3b82f6"
-                    : "3px solid transparent",
                 }}
               >
-                <span style={{ fontSize: "18px" }}>{link.icon}</span>
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    fontSize: "22px",
+                    color: isActive ? "#2563eb" : "#94a3b8",
+                  }}
+                >
+                  {link.icon}
+                </span>
                 {link.label}
               </Link>
             );
@@ -158,26 +172,41 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Role badge */}
+      {/* User card at bottom */}
       <div
         style={{
-          padding: "12px",
-          borderRadius: "12px",
-          background: "rgba(30,41,59,0.5)",
-          border: "1px solid #1e293b",
+          padding: "14px",
+          borderRadius: "14px",
+          background: "#f8fafc",
+          border: "1px solid #e2e8f0",
         }}
       >
-        <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>
-          Logged in as
-        </div>
-        <div style={{ fontSize: "13px", fontWeight: 600, color: "#f1f5f9" }}>
-          {session?.user?.name || "User"}
-        </div>
-        <div
-          className="badge badge-info"
-          style={{ marginTop: "6px", fontSize: "11px" }}
-        >
-          {role || "—"}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "9999px",
+              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "14px",
+              fontWeight: 700,
+              color: "white",
+              flexShrink: 0,
+            }}
+          >
+            {session?.user?.name?.[0]?.toUpperCase() || "U"}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {session?.user?.name || "User"}
+            </div>
+            <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500 }}>
+              {role || "—"}
+            </div>
+          </div>
         </div>
       </div>
     </aside>

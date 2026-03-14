@@ -39,30 +39,30 @@ export default function DashboardPage() {
     {
       label: "Total Students",
       value: stats?.totalStudents ?? 0,
-      icon: "🎓",
-      color: "#3b82f6",
-      bg: "rgba(59,130,246,0.1)",
+      icon: "school",
+      color: "#2563eb",
+      bg: "rgba(37,99,235,0.08)",
     },
     {
       label: "Total Faculty",
       value: stats?.totalFaculty ?? 0,
-      icon: "👨‍🏫",
-      color: "#8b5cf6",
-      bg: "rgba(139,92,246,0.1)",
+      icon: "groups",
+      color: "#7c3aed",
+      bg: "rgba(124,58,237,0.08)",
     },
     {
       label: "Departments",
       value: stats?.totalDepartments ?? 0,
-      icon: "🏛️",
-      color: "#10b981",
-      bg: "rgba(16,185,129,0.1)",
+      icon: "apartment",
+      color: "#059669",
+      bg: "rgba(5,150,105,0.08)",
     },
     {
       label: "Subjects",
       value: stats?.totalSubjects ?? 0,
-      icon: "📚",
-      color: "#f59e0b",
-      bg: "rgba(245,158,11,0.1)",
+      icon: "book",
+      color: "#d97706",
+      bg: "rgba(217,119,6,0.08)",
     },
   ];
 
@@ -80,14 +80,15 @@ export default function DashboardPage() {
         <h1
           style={{
             fontSize: "28px",
-            fontWeight: 700,
-            color: "#f1f5f9",
+            fontWeight: 800,
+            color: "#0f172a",
             marginBottom: "4px",
+            letterSpacing: "-0.02em",
           }}
         >
           Welcome back, {session?.user?.name?.split(" ")[0]} 👋
         </h1>
-        <p style={{ fontSize: "14px", color: "#94a3b8" }}>
+        <p style={{ fontSize: "15px", color: "#64748b" }}>
           Here&apos;s what&apos;s happening at TSEC today
         </p>
       </div>
@@ -104,9 +105,14 @@ export default function DashboardPage() {
         {filteredCards.map((card, i) => (
           <div
             key={card.label}
-            className="glass-card animate-fade-in"
+            className="animate-fade-in"
             style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #e2e8f0",
               padding: "24px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              transition: "all 0.3s ease",
               animationDelay: `${i * 0.1}s`,
               opacity: 0,
             }}
@@ -128,10 +134,9 @@ export default function DashboardPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "24px",
                 }}
               >
-                {card.icon}
+                <span className="material-symbols-outlined" style={{ fontSize: "24px", color: card.color }}>{card.icon}</span>
               </div>
             </div>
             <div
@@ -144,7 +149,7 @@ export default function DashboardPage() {
             >
               {loading ? "—" : card.value}
             </div>
-            <div style={{ fontSize: "13px", color: "#94a3b8" }}>
+            <div style={{ fontSize: "13px", color: "#64748b", fontWeight: 500 }}>
               {card.label}
             </div>
           </div>
@@ -160,16 +165,20 @@ export default function DashboardPage() {
         }}
       >
         {/* Average Attendance */}
-        <div className="glass-card" style={{ padding: "24px" }}>
+        <div style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
           <h3
             style={{
               fontSize: "16px",
-              fontWeight: 600,
-              color: "#f1f5f9",
+              fontWeight: 700,
+              color: "#0f172a",
               marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            📋 Attendance Overview
+            <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#64748b" }}>fact_check</span>
+            Attendance Overview
           </h3>
           <div
             style={{
@@ -183,7 +192,7 @@ export default function DashboardPage() {
                 width: "100px",
                 height: "100px",
                 borderRadius: "50%",
-                background: `conic-gradient(#10b981 ${(stats?.averageAttendance ?? 0) * 3.6}deg, #1e293b 0deg)`,
+                background: `conic-gradient(#059669 ${(stats?.averageAttendance ?? 0) * 3.6}deg, #e2e8f0 0deg)`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -194,23 +203,23 @@ export default function DashboardPage() {
                   width: "80px",
                   height: "80px",
                   borderRadius: "50%",
-                  background: "#0f172a",
+                  background: "#ffffff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "20px",
                   fontWeight: 700,
-                  color: "#10b981",
+                  color: "#059669",
                 }}
               >
                 {loading ? "—" : `${stats?.averageAttendance ?? 0}%`}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: "14px", color: "#94a3b8", marginBottom: "8px" }}>
+              <div style={{ fontSize: "14px", color: "#475569", marginBottom: "8px", fontWeight: 500 }}>
                 Average Attendance
               </div>
-              <div style={{ fontSize: "13px", color: "#64748b" }}>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>
                 Minimum required: 75%
               </div>
             </div>
@@ -218,16 +227,20 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Notices */}
-        <div className="glass-card" style={{ padding: "24px" }}>
+        <div style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
           <h3
             style={{
               fontSize: "16px",
-              fontWeight: 600,
-              color: "#f1f5f9",
+              fontWeight: 700,
+              color: "#0f172a",
               marginBottom: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            📢 Recent Notices
+            <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#64748b" }}>campaign</span>
+            Recent Notices
           </h3>
           {stats?.recentNotices?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -236,24 +249,24 @@ export default function DashboardPage() {
                   key={notice.id}
                   style={{
                     padding: "12px",
-                    borderRadius: "8px",
-                    background: "rgba(15,23,42,0.5)",
+                    borderRadius: "12px",
+                    background: "#f8fafc",
                     borderLeft: `3px solid ${
-                      notice.priority === "high" ? "#ef4444" : "#3b82f6"
+                      notice.priority === "high" ? "#ef4444" : "#2563eb"
                     }`,
                   }}
                 >
-                  <div style={{ fontSize: "13px", fontWeight: 500, color: "#e2e8f0" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a" }}>
                     {notice.title}
                   </div>
-                  <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                  <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>
                     {new Date(notice.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ fontSize: "13px", color: "#64748b" }}>No recent notices</div>
+            <div style={{ fontSize: "13px", color: "#94a3b8" }}>No recent notices</div>
           )}
         </div>
       </div>

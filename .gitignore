@@ -1,0 +1,45 @@
+# dependencies
+node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# temp debug scripts
+check_db.js
+check_student.js
+test_login.js
+test_authorize.js
+db_output.json
+
+# stitch assets (already integrated)
+notices_board.html
+notices_board.png
