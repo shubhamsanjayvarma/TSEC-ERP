@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { getSessionUser, unauthorizedResponse } from "@/lib/auth-helpers";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const [totalStudents, totalFaculty, totalDepartments, totalSubjects, recentNotices] =
       await Promise.all([
         prisma.student.count(),
@@ -16,7 +26,6 @@ export async function GET() {
         }),
       ]);
 
-    // Calculate average attendance
     const attendanceRecords = await prisma.attendance.groupBy({
       by: ["status"],
       _count: { status: true },

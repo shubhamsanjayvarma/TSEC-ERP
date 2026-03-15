@@ -3,16 +3,28 @@ import { getToken } from "next-auth/jwt";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import type { NextRequest } from "next/server";
+import { validateRequest, changePasswordSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
 
 export async function PUT(request: NextRequest) {
   try {
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    // Rate limit password changes strictly (auth type)
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "auth");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token?.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { currentPassword, newPassword } = body;
+    const validation = await validateRequest(request, changePasswordSchema);
+    if (!validation.success) return validation.response;
+    const { currentPassword, newPassword } = validation.data;
 
     const user = await prisma.user.findUnique({
       where: { id: token.userId as string },

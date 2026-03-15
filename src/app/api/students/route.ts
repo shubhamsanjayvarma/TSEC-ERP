@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, createStudentSchema, validatePaginationParams, validateQueryParam } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Rate limit
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    // Auth check (IDOR: scoped access)
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const search = searchParams.get("search") || "";
-    const department = searchParams.get("department") || "";
+    const { page, limit } = validatePaginationParams(searchParams);
+    const search = validateQueryParam(searchParams.get("search"), "search") || "";
+    const department = validateQueryParam(searchParams.get("department"), "department") || "";
 
     const where: any = {};
     if (search) {
@@ -18,6 +31,11 @@ export async function GET(request: Request) {
     }
     if (department) {
       where.departmentId = department;
+    }
+
+    // IDOR: Students can only see their own record
+    if (session.role === "STUDENT" && session.studentId) {
+      where.id = session.studentId;
     }
 
     const [students, total] = await Promise.all([
@@ -49,10 +67,27 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, email, password, rollNumber, departmentId, batch, semester } = body;
+    // CSRF check
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    // Rate limit
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    // Auth + Role check (only ADMIN can create students)
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN");
+    if (roleError) return roleError;
+
+    // Validate input
+    const validation = await validateRequest(request, createStudentSchema);
+    if (!validation.success) return validation.response;
+    const { name, email, password, rollNumber, departmentId, batch, semester } = validation.data;
 
     const bcrypt = await import("bcryptjs");
     const hashedPassword = await bcrypt.hash(password || "student123", 10);

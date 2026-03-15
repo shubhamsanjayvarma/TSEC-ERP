@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, createDepartmentSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const departments = await prisma.department.findMany({
       orderBy: { name: "asc" },
     });
@@ -12,11 +24,25 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN");
+    if (roleError) return roleError;
+
+    const validation = await validateRequest(request, createDepartmentSchema);
+    if (!validation.success) return validation.response;
+
     const department = await prisma.department.create({
-      data: { name: body.name, code: body.code },
+      data: { name: validation.data.name, code: validation.data.code },
     });
     return NextResponse.json(department, { status: 201 });
   } catch (error: any) {

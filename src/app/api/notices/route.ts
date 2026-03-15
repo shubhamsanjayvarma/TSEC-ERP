@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, createNoticeSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const notices = await prisma.notice.findMany({
       orderBy: { createdAt: "desc" },
     });
@@ -12,10 +24,23 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { title, content, priority, targetRole } = body;
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN", "FACULTY");
+    if (roleError) return roleError;
+
+    const validation = await validateRequest(request, createNoticeSchema);
+    if (!validation.success) return validation.response;
+    const { title, content, priority, targetRole } = validation.data;
 
     const notice = await prisma.notice.create({
       data: {
@@ -23,7 +48,7 @@ export async function POST(request: Request) {
         content,
         priority: priority || "normal",
         targetRole: targetRole || null,
-        createdBy: "admin",
+        createdBy: session.userId,
       },
     });
 

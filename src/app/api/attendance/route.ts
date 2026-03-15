@@ -1,12 +1,29 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, markAttendanceSchema, validateQueryParam } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { subjectId, facultyId, date, records } = body;
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
 
-    // records = [{ studentId, status }]
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN", "FACULTY");
+    if (roleError) return roleError;
+
+    const validation = await validateRequest(request, markAttendanceSchema);
+    if (!validation.success) return validation.response;
+    const { subjectId, facultyId, date, records } = validation.data;
+
     const attendanceData = records.map((r: any) => ({
       studentId: r.studentId,
       subjectId,
@@ -15,7 +32,6 @@ export async function POST(request: Request) {
       status: r.status,
     }));
 
-    // Upsert attendance (update if exists for the same date/subject/student)
     const results = [];
     for (const data of attendanceData) {
       const record = await prisma.attendance.upsert({
@@ -42,16 +58,30 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
-    const studentId = searchParams.get("studentId");
-    const subjectId = searchParams.get("subjectId");
+    const studentId = validateQueryParam(searchParams.get("studentId"), "studentId");
+    const subjectId = validateQueryParam(searchParams.get("subjectId"), "subjectId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
     const where: any = {};
-    if (studentId) where.studentId = studentId;
+
+    // IDOR: Students can only see their own attendance
+    if (session.role === "STUDENT" && session.studentId) {
+      where.studentId = session.studentId;
+    } else if (studentId) {
+      where.studentId = studentId;
+    }
+
     if (subjectId) where.subjectId = subjectId;
     if (from || to) {
       where.date = {};
@@ -71,7 +101,6 @@ export async function GET(request: Request) {
       take: 500,
     });
 
-    // Calculate summary
     const total = records.length;
     const present = records.filter((r) => r.status === "PRESENT").length;
     const percentage = total > 0 ? Math.round((present / total) * 100) : 0;

@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, createFacultySchema, validateQueryParam } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const department = searchParams.get("department") || "";
+    const search = validateQueryParam(searchParams.get("search"), "search") || "";
+    const department = validateQueryParam(searchParams.get("department"), "department") || "";
 
     const where: any = {};
     if (search) {
@@ -16,6 +28,11 @@ export async function GET(request: Request) {
     }
     if (department) {
       where.departmentId = department;
+    }
+
+    // IDOR: Faculty can only see their own record if not admin
+    if (session.role === "FACULTY" && session.facultyId) {
+      where.id = session.facultyId;
     }
 
     const faculty = await prisma.faculty.findMany({
@@ -37,10 +54,23 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, email, password, employeeId, departmentId, designation } = body;
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN");
+    if (roleError) return roleError;
+
+    const validation = await validateRequest(request, createFacultySchema);
+    if (!validation.success) return validation.response;
+    const { name, email, password, employeeId, departmentId, designation } = validation.data;
 
     const bcrypt = await import("bcryptjs");
     const hashedPassword = await bcrypt.hash(password || "faculty123", 10);

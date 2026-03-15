@@ -1,0 +1,14 @@
+# Dependabot configuration - ERP-010
+# Automatically creates PRs for dependency updates
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "pratikforge"
+    labels:
+      - "dependencies"
+      - "security"

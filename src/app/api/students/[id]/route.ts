@@ -1,14 +1,34 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, updateStudentSchema } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole, canAccessStudent, forbiddenResponse } from "@/lib/auth-helpers";
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN");
+    if (roleError) return roleError;
+
     const { id } = await params;
-    const body = await request.json();
-    const { name, email, rollNumber, departmentId, batch, semester, status } = body;
+
+    // Validate input
+    const validation = await validateRequest(request, updateStudentSchema);
+    if (!validation.success) return validation.response;
+    const { name, email, rollNumber, departmentId, batch, semester, status } = validation.data;
 
     const student = await prisma.student.findUnique({
       where: { id },
@@ -53,17 +73,28 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN");
+    if (roleError) return roleError;
+
     const { id } = await params;
     const student = await prisma.student.findUnique({ where: { id } });
     if (!student) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // Delete user (cascades to student)
     await prisma.user.delete({ where: { id: student.userId } });
 
     return NextResponse.json({ message: "Student deleted successfully" });

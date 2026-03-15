@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { validateRequest, createExamSchema, validateQueryParam } from "@/lib/validations";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkCsrf } from "@/lib/csrf";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "query");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+
     const { searchParams } = new URL(request.url);
-    const subjectId = searchParams.get("subjectId");
+    const subjectId = validateQueryParam(searchParams.get("subjectId"), "subjectId");
 
     const where: any = {};
     if (subjectId) where.subjectId = subjectId;
@@ -30,10 +42,23 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, type, date, maxMarks, subjectId } = body;
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, "mutation");
+    if (!rl.allowed) return rateLimitResponse(rl.resetIn);
+
+    const session = await getSessionUser(request);
+    if (!session) return unauthorizedResponse();
+    const roleError = requireRole(session, "ADMIN", "FACULTY");
+    if (roleError) return roleError;
+
+    const validation = await validateRequest(request, createExamSchema);
+    if (!validation.success) return validation.response;
+    const { name, type, date, maxMarks, subjectId } = validation.data;
 
     const exam = await prisma.exam.create({
       data: {
