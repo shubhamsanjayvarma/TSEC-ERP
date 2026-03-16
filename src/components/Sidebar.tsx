@@ -1,10 +1,18 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-const adminLinks = [
+type SidebarLink = {
+  href?: string;
+  label: string;
+  icon: string;
+  subLinks?: { href: string; label: string }[];
+};
+
+const adminLinks: SidebarLink[] = [
   { href: "/dashboard", label: "Home", icon: "dashboard" },
   { href: "/dashboard/students", label: "Students", icon: "school" },
   { href: "/dashboard/faculty", label: "Faculty", icon: "groups" },
@@ -15,7 +23,7 @@ const adminLinks = [
   { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
 
-const facultyLinks = [
+const facultyLinks: SidebarLink[] = [
   { href: "/dashboard", label: "Home", icon: "dashboard" },
   { href: "/dashboard/attendance", label: "Mark Attendance", icon: "fact_check" },
   { href: "/dashboard/exams", label: "Upload Marks", icon: "quiz" },
@@ -23,12 +31,181 @@ const facultyLinks = [
   { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
 
-const studentLinks = [
+const studentLinks: SidebarLink[] = [
   { href: "/dashboard", label: "Home", icon: "dashboard" },
-  { href: "/dashboard/attendance", label: "Attendance", icon: "fact_check" },
-  { href: "/dashboard/results", label: "Results", icon: "leaderboard" },
+  { 
+    label: "Student", icon: "person", 
+    subLinks: [
+      { href: "/dashboard/profile", label: "Display Profile" },
+      { href: "/dashboard/attendance", label: "Marks & Attendance" },
+      { href: "/dashboard/results", label: "Provisional Marksheet" },
+      { href: "/dashboard/profile", label: "Change Login" }
+    ]
+  },
+  { 
+    label: "Feed-Back", icon: "reviews",
+    subLinks: [
+      { href: "/dashboard/feedback/lecture", label: "For Lecture" },
+      { href: "/dashboard/feedback/practical", label: "For Practical" },
+      { href: "/dashboard/feedback/expert", label: "Expert / Guest Lecture" }
+    ]
+  },
+  { 
+    label: "Survey", icon: "poll",
+    subLinks: [
+      { href: "/dashboard/survey/course", label: "Course Exit" },
+      { href: "/dashboard/survey/program", label: "Program Exit" }
+    ]
+  },
+  { 
+    label: "Online", icon: "language",
+    subLinks: [
+      { href: "/dashboard/online/exam", label: "Online Exam" },
+      { href: "/dashboard/online/quiz", label: "Online Quiz" }
+    ]
+  },
+  { 
+    label: "Syllabus", icon: "menu_book",
+    subLinks: [
+      { href: "/dashboard/syllabus", label: "Syllabus Content" },
+      { href: "/dashboard/belt/topic", label: "Display Topic" }
+    ]
+  },
+  { 
+    label: "Time-Table", icon: "calendar_month",
+    subLinks: [
+      { href: "/dashboard/timetable/dept", label: "Dept. Time Table" }
+    ]
+  },
+  { 
+    label: "Upload", icon: "upload_file",
+    subLinks: [
+      { href: "/dashboard/upload/certificate", label: "Certificate" }
+    ]
+  },
+  { 
+    label: "Online Forms", icon: "description",
+    subLinks: [
+      { href: "/dashboard/forms/exam", label: "Exam Form" }
+    ]
+  },
   { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
+
+function SidebarItem({ link, pathname }: { link: SidebarLink; pathname: string }) {
+  const [isOpen, setIsOpen] = useState(
+    link.subLinks?.some(sub => pathname === sub.href) || false
+  );
+
+  const isActive = link.href 
+    ? pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href))
+    : link.subLinks?.some(sub => pathname === sub.href);
+
+  if (link.subLinks) {
+    return (
+      <div>
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 12px",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: isActive ? 700 : 500,
+            color: isActive ? "#0f1729" : "#64748b",
+            background: isActive ? "rgba(37,99,235,0.06)" : "transparent",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "22px", color: isActive ? "#2563eb" : "#94a3b8" }}
+            >
+              {link.icon}
+            </span>
+            {link.label}
+          </div>
+          <span
+            className="material-symbols-outlined"
+            style={{ 
+              fontSize: "18px", 
+              color: "#94a3b8",
+              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease"
+            }}
+          >
+            expand_more
+          </span>
+        </div>
+        
+        {isOpen && (
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: "2px",
+            marginTop: "2px",
+            marginLeft: "24px",
+            paddingLeft: "10px",
+            borderLeft: "2px solid #e2e8f0"
+          }}>
+            {link.subLinks.map(sub => {
+              const isSubActive = pathname === sub.href;
+              return (
+                <Link
+                  key={sub.href}
+                  href={sub.href}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: isSubActive ? 600 : 500,
+                    color: isSubActive ? "#2563eb" : "#64748b",
+                    textDecoration: "none",
+                    background: isSubActive ? "rgba(37,99,235,0.06)" : "transparent",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {sub.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={link.href!}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "10px 12px",
+        borderRadius: "12px",
+        fontSize: "14px",
+        fontWeight: isActive ? 700 : 500,
+        color: isActive ? "#0f1729" : "#64748b",
+        background: isActive ? "rgba(37,99,235,0.06)" : "transparent",
+        textDecoration: "none",
+        transition: "all 0.2s ease",
+      }}
+    >
+      <span
+        className="material-symbols-outlined"
+        style={{ fontSize: "22px", color: isActive ? "#2563eb" : "#94a3b8" }}
+      >
+        {link.icon}
+      </span>
+      {link.label}
+    </Link>
+  );
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -46,10 +223,9 @@ export default function Sidebar() {
     <aside
       style={{
         width: "260px",
-        minHeight: "100vh",
+        height: "100vh",
         background: "#ffffff",
         borderRight: "1px solid #e2e8f0",
-        padding: "16px 16px",
         display: "flex",
         flexDirection: "column",
         position: "fixed",
@@ -64,8 +240,8 @@ export default function Sidebar() {
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          padding: "4px 8px",
-          marginBottom: "28px",
+          padding: "20px 24px 10px 24px",
+          flexShrink: 0,
         }}
       >
         <div
@@ -115,96 +291,74 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "#94a3b8",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            padding: "0 12px",
-            marginBottom: "8px",
-          }}
-        >
-          Main Menu
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-          {links.map((link) => {
-            const isActive =
-              pathname === link.href ||
-              (link.href !== "/dashboard" && pathname.startsWith(link.href));
-
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  fontSize: "14px",
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? "#0f1729" : "#64748b",
-                  background: isActive
-                    ? "rgba(37,99,235,0.06)"
-                    : "transparent",
-                  textDecoration: "none",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{
-                    fontSize: "22px",
-                    color: isActive ? "#2563eb" : "#94a3b8",
-                  }}
-                >
-                  {link.icon}
-                </span>
-                {link.label}
-              </Link>
-            );
-          })}
+      {/* Navigation - Scrollable Area */}
+      <nav 
+        style={{ 
+          flex: 1, 
+          overflowY: "auto", 
+          padding: "16px",
+          scrollbarWidth: "none", // Firefox
+          msOverflowStyle: "none", // IE
+        }}
+      >
+        <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
+        <div className="scrollbar-hide">
+          <div
+            style={{
+              fontSize: "10px",
+              fontWeight: 700,
+              color: "#94a3b8",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              padding: "0 12px",
+              marginBottom: "8px",
+            }}
+          >
+            Main Menu
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            {links.map((link, idx) => (
+              <SidebarItem key={link.label + idx} link={link} pathname={pathname} />
+            ))}
+          </div>
         </div>
       </nav>
 
       {/* User card at bottom */}
-      <div
-        style={{
-          padding: "14px",
-          borderRadius: "14px",
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "9999px",
-              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "14px",
-              fontWeight: 700,
-              color: "white",
-              flexShrink: 0,
-            }}
-          >
-            {session?.user?.name?.[0]?.toUpperCase() || "U"}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {session?.user?.name || "User"}
+      <div style={{ padding: "16px", flexShrink: 0, borderTop: "1px solid #f1f5f9" }}>
+        <div
+          style={{
+            padding: "14px",
+            borderRadius: "14px",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "9999px",
+                background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "white",
+                flexShrink: 0,
+              }}
+            >
+              {session?.user?.name?.[0]?.toUpperCase() || "U"}
             </div>
-            <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500 }}>
-              {role || "—"}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {session?.user?.name || "User"}
+              </div>
+              <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 500 }}>
+                {role || "—"}
+              </div>
             </div>
           </div>
         </div>
