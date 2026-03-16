@@ -287,7 +287,14 @@ body {
   scrollbar-width: none;
 }
 
-/* ERP-FIX: Remove Next.js dev indicators */
-[data-nextjs-toast-wrapper], #nextjs-portal, .nextjs-static-indicator-container { 
+/* ERP-FIX: Remove Next.js dev indicators and hydration error portals */
+nextjs-portal,
+#nextjs-portal,
+[data-nextjs-toast-wrapper],
+[data-nextjs-static-indicator],
+.nextjs-static-indicator-container { 
   display: none !important; 
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
 }
