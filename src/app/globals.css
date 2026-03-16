@@ -286,3 +286,8 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ERP-FIX: Remove Next.js dev indicators */
+[data-nextjs-toast-wrapper], #nextjs-portal, .nextjs-static-indicator-container { 
+  display: none !important; 
+}
