@@ -31,7 +31,7 @@ export default function StudentsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const [newStudent, setNewStudent] = useState({
-    name: "", email: "", rollNumber: "", departmentId: "", batch: "2024", semester: 1,
+    name: "", email: "", password: "", rollNumber: "", departmentId: "", batch: "2024", semester: 1,
   });
 
   useEffect(() => { fetchStudents(); }, [page, debouncedSearch]);
@@ -67,7 +67,7 @@ export default function StudentsPage() {
       });
       if (res.ok) {
         setShowAddForm(false);
-        setNewStudent({ name: "", email: "", rollNumber: "", departmentId: "", batch: "2024", semester: 1 });
+        setNewStudent({ name: "", email: "", password: "", rollNumber: "", departmentId: "", batch: "2024", semester: 1 });
         addToast("Student added successfully");
         fetchStudents();
       } else {
@@ -152,6 +152,10 @@ export default function StudentsPage() {
               <div>
                 <label style={{ fontSize: "13px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>Roll Number</label>
                 <input className="input-field" placeholder="CE2024001" value={newStudent.rollNumber} onChange={(e) => setNewStudent({ ...newStudent, rollNumber: e.target.value })} required />
+              </div>
+              <div>
+                <label style={{ fontSize: "13px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>Initial Password</label>
+                <input className="input-field" type="password" placeholder="Min 8 characters" value={newStudent.password} onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })} required minLength={8} />
               </div>
               <div>
                 <label style={{ fontSize: "13px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>Department</label>

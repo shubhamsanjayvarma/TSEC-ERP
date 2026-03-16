@@ -5,6 +5,7 @@ import { validateRequest, createDepartmentSchema } from "@/lib/validations";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { checkCsrf } from "@/lib/csrf";
 import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +37,16 @@ export async function POST(request: NextRequest) {
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "DEPARTMENT_CREATE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     const validation = await validateRequest(request, createDepartmentSchema);
     if (!validation.success) return validation.response;
@@ -44,8 +54,22 @@ export async function POST(request: NextRequest) {
     const department = await prisma.department.create({
       data: { name: validation.data.name, code: validation.data.code },
     });
+    logAuditEvent({
+      action: "DEPARTMENT_CREATE",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "DEPARTMENT",
+      targetId: department.id,
+      details: { code: department.code },
+    });
     return NextResponse.json(department, { status: 201 });
   } catch (error: any) {
+    logAuditEvent({
+      action: "DEPARTMENT_CREATE",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     if (error.code === "P2002") {
       return NextResponse.json({ error: "Department already exists" }, { status: 400 });
     }

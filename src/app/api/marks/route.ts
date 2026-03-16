@@ -5,6 +5,8 @@ import { validateRequest, uploadMarksSchema, validateQueryParam } from "@/lib/va
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { checkCsrf } from "@/lib/csrf";
 import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
+import { canFacultyManageAssignedSubject } from "@/lib/authz";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +20,16 @@ export async function POST(request: NextRequest) {
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN", "FACULTY");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "MARKS_UPLOAD",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     const validation = await validateRequest(request, uploadMarksSchema);
     if (!validation.success) return validation.response;
@@ -26,13 +37,58 @@ export async function POST(request: NextRequest) {
 
     const exam = await prisma.exam.findUnique({ where: { id: examId } });
     if (!exam) {
+      logAuditEvent({
+        action: "MARKS_UPLOAD",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        targetType: "EXAM",
+        targetId: examId,
+        details: { reason: "exam_not_found" },
+      });
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    }
+
+    // Faculty can only upload marks for subjects assigned to them.
+    if (session.role === "FACULTY") {
+      const assignment = await prisma.subjectAssignment.findUnique({
+        where: {
+          facultyId_subjectId: {
+            facultyId: session.facultyId!,
+            subjectId: exam.subjectId,
+          },
+        },
+      });
+      if (!assignment || !canFacultyManageAssignedSubject(session.facultyId, [assignment.facultyId])) {
+        logAuditEvent({
+          action: "MARKS_UPLOAD",
+          outcome: "FAILURE",
+          actorId: session.userId,
+          actorRole: session.role,
+          targetType: "SUBJECT",
+          targetId: exam.subjectId,
+          details: { reason: "subject_not_assigned" },
+        });
+        return NextResponse.json(
+          { error: "You are not assigned to this subject" },
+          { status: 403 }
+        );
+      }
     }
 
     const results = [];
     for (const m of marks) {
       // Validate marks don't exceed maximum
       if (m.marksObtained > exam.maxMarks) {
+        logAuditEvent({
+          action: "MARKS_UPLOAD",
+          outcome: "FAILURE",
+          actorId: session.userId,
+          actorRole: session.role,
+          targetType: "EXAM",
+          targetId: examId,
+          details: { reason: "marks_exceed_max", studentId: m.studentId },
+        });
         return NextResponse.json(
           { error: `Marks ${m.marksObtained} exceed maximum ${exam.maxMarks} for student ${m.studentId}` },
           { status: 400 }
@@ -66,11 +122,26 @@ export async function POST(request: NextRequest) {
       results.push(record);
     }
 
+    logAuditEvent({
+      action: "MARKS_UPLOAD",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "EXAM",
+      targetId: examId,
+      details: { count: results.length },
+    });
+
     return NextResponse.json({
       message: `Marks uploaded for ${results.length} students`,
       count: results.length,
     });
   } catch (error) {
+    logAuditEvent({
+      action: "MARKS_UPLOAD",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     console.error("Marks upload error:", error);
     return NextResponse.json({ error: "Failed to upload marks" }, { status: 500 });
   }
@@ -94,6 +165,14 @@ export async function GET(request: NextRequest) {
     // IDOR: Students can only see their own marks
     if (session.role === "STUDENT" && session.studentId) {
       where.studentId = session.studentId;
+    } else if (session.role === "FACULTY" && session.facultyId) {
+      where.exam = {
+        subject: {
+          assignments: {
+            some: { facultyId: session.facultyId },
+          },
+        },
+      };
     } else if (studentId) {
       where.studentId = studentId;
     }

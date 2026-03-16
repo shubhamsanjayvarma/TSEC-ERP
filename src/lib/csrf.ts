@@ -5,9 +5,17 @@
 
 import { NextResponse } from "next/server";
 
-const ALLOWED_ORIGINS = [
-  process.env.NEXTAUTH_URL || "http://localhost:3000",
-];
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.NEXTAUTH_URL || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+  .map((origin) => {
+    try {
+      return new URL(origin).origin;
+    } catch {
+      return origin;
+    }
+  });
 
 export function checkCsrf(request: Request): NextResponse | null {
   const method = request.method;
@@ -20,24 +28,34 @@ export function checkCsrf(request: Request): NextResponse | null {
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
 
-  // Accept if origin matches
-  if (origin && ALLOWED_ORIGINS.some((allowed) => origin.startsWith(allowed))) {
+  const isAllowedOrigin = (value: string) => {
+    try {
+      return ALLOWED_ORIGINS.includes(new URL(value).origin);
+    } catch {
+      return false;
+    }
+  };
+
+  // Accept if origin matches exactly
+  if (origin && isAllowedOrigin(origin)) {
     return null;
   }
 
   // Accept if referer matches when origin is absent
-  if (!origin && referer && ALLOWED_ORIGINS.some((allowed) => referer.startsWith(allowed))) {
+  if (!origin && referer && isAllowedOrigin(referer)) {
     return null;
   }
 
-  // For same-origin requests where browser doesn't send Origin header (e.g., same-site form submissions)
+  // Reject state-changing requests that do not provide a trusted origin signal.
   if (!origin && !referer) {
-    // This can happen for same-origin requests; allow but log
-    return null;
+    return NextResponse.json(
+      { error: "CSRF validation failed - missing origin/referrer" },
+      { status: 403 }
+    );
   }
 
   return NextResponse.json(
-    { error: "CSRF validation failed — request origin not allowed" },
+    { error: "CSRF validation failed - request origin not allowed" },
     { status: 403 }
   );
 }

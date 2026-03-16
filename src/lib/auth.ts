@@ -2,6 +2,8 @@ import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "./prisma";
+import { checkRateLimit } from "./rate-limit";
+import { logAuditEvent } from "./audit";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -11,13 +13,31 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password are required");
+          logAuditEvent({
+            action: "AUTH_LOGIN",
+            outcome: "FAILURE",
+            details: { reason: "missing_credentials" },
+          });
+          throw new Error("Invalid credentials");
+        }
+
+        const email = credentials.email.trim().toLowerCase();
+        const forwardedFor = (req as any)?.headers?.["x-forwarded-for"];
+        const ip = typeof forwardedFor === "string" ? forwardedFor.split(",")[0].trim() : "unknown";
+        const limiter = checkRateLimit(`${ip}:${email}`, "auth");
+        if (!limiter.allowed) {
+          logAuditEvent({
+            action: "AUTH_LOGIN",
+            outcome: "FAILURE",
+            details: { reason: "rate_limited", email, ip },
+          });
+          throw new Error("Too many login attempts. Please wait and try again.");
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
           include: {
             student: { include: { department: true } },
             faculty: { include: { department: true } },
@@ -25,7 +45,12 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || user.status !== "active") {
-          throw new Error("Invalid credentials or account disabled");
+          logAuditEvent({
+            action: "AUTH_LOGIN",
+            outcome: "FAILURE",
+            details: { reason: "invalid_user_or_inactive", email, ip },
+          });
+          throw new Error("Invalid credentials");
         }
 
         const passwordMatch = await bcrypt.compare(
@@ -34,8 +59,23 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!passwordMatch) {
+          logAuditEvent({
+            action: "AUTH_LOGIN",
+            outcome: "FAILURE",
+            actorId: user.id,
+            actorRole: user.role,
+            details: { reason: "password_mismatch", email, ip },
+          });
           throw new Error("Invalid credentials");
         }
+
+        logAuditEvent({
+          action: "AUTH_LOGIN",
+          outcome: "SUCCESS",
+          actorId: user.id,
+          actorRole: user.role,
+          details: { email, ip },
+        });
 
         return {
           id: user.id,

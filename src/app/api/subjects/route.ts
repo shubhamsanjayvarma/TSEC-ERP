@@ -13,7 +13,15 @@ export async function GET(request: NextRequest) {
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
 
+    const where: any = {};
+    if (session.role === "FACULTY" && session.facultyId) {
+      where.assignments = { some: { facultyId: session.facultyId } };
+    } else if (session.role === "STUDENT" && session.department) {
+      where.department = { name: session.department };
+    }
+
     const subjects = await prisma.subject.findMany({
+      where,
       include: { department: { select: { name: true } } },
       orderBy: { code: "asc" },
     });

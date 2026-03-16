@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
-import { getSessionUser, unauthorizedResponse } from "@/lib/auth-helpers";
+import { getSessionUser, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-helpers";
+import { canRoleAccessDashboardStats } from "@/lib/authz";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +14,16 @@ export async function GET(request: NextRequest) {
 
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
+    if (!canRoleAccessDashboardStats(session.role)) {
+      logAuditEvent({
+        action: "DASHBOARD_STATS_READ",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return forbiddenResponse("Students are not authorized to access aggregate dashboard statistics");
+    }
 
     const [totalStudents, totalFaculty, totalDepartments, totalSubjects, recentNotices] =
       await Promise.all([

@@ -5,6 +5,7 @@ import { validateRequest, createStudentSchema, validatePaginationParams, validat
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { checkCsrf } from "@/lib/csrf";
 import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +37,8 @@ export async function GET(request: NextRequest) {
     // IDOR: Students can only see their own record
     if (session.role === "STUDENT" && session.studentId) {
       where.id = session.studentId;
+    } else if (session.role === "FACULTY" && session.department) {
+      where.department = { name: session.department };
     }
 
     const [students, total] = await Promise.all([
@@ -82,7 +85,16 @@ export async function POST(request: NextRequest) {
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "STUDENT_CREATE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     // Validate input
     const validation = await validateRequest(request, createStudentSchema);
@@ -90,7 +102,7 @@ export async function POST(request: NextRequest) {
     const { name, email, password, rollNumber, departmentId, batch, semester } = validation.data;
 
     const bcrypt = await import("bcryptjs");
-    const hashedPassword = await bcrypt.hash(password || "student123", 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
@@ -112,9 +124,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    logAuditEvent({
+      action: "STUDENT_CREATE",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "STUDENT",
+      targetId: user.student?.id,
+      details: { email },
+    });
+
+    return NextResponse.json(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        student: user.student,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("Create student error:", error);
+    logAuditEvent({
+      action: "STUDENT_CREATE",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Email or roll number already exists" },

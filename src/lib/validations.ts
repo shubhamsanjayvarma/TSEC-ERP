@@ -42,7 +42,7 @@ export async function validateRequest<T extends z.ZodTypeAny>(
 export const createStudentSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Password must be at least 6 characters").max(100).optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100),
   rollNumber: z.string().min(1, "Roll number is required").max(20),
   departmentId: z.string().min(1, "Department is required"),
   batch: z.string().max(10).optional(),
@@ -64,7 +64,7 @@ export const updateStudentSchema = z.object({
 export const createFacultySchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   email: z.string().email("Invalid email"),
-  password: z.string().min(6).max(100).optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100),
   employeeId: z.string().min(1, "Employee ID is required").max(20),
   departmentId: z.string().min(1, "Department is required"),
   designation: z.string().max(100).optional(),

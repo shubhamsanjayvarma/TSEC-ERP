@@ -5,6 +5,7 @@ import { validateRequest, createFacultySchema, validateQueryParam } from "@/lib/
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { checkCsrf } from "@/lib/csrf";
 import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,14 +67,23 @@ export async function POST(request: NextRequest) {
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "FACULTY_CREATE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     const validation = await validateRequest(request, createFacultySchema);
     if (!validation.success) return validation.response;
     const { name, email, password, employeeId, departmentId, designation } = validation.data;
 
     const bcrypt = await import("bcryptjs");
-    const hashedPassword = await bcrypt.hash(password || "faculty123", 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
@@ -94,8 +104,32 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    logAuditEvent({
+      action: "FACULTY_CREATE",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "FACULTY",
+      targetId: user.faculty?.id,
+      details: { email },
+    });
+
+    return NextResponse.json(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        faculty: user.faculty,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
+    logAuditEvent({
+      action: "FACULTY_CREATE",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Email or Employee ID already exists" },

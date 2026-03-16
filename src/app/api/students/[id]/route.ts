@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 import { validateRequest, updateStudentSchema } from "@/lib/validations";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { checkCsrf } from "@/lib/csrf";
-import { getSessionUser, unauthorizedResponse, requireRole, canAccessStudent, forbiddenResponse } from "@/lib/auth-helpers";
+import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function PUT(
   request: NextRequest,
@@ -21,7 +22,16 @@ export async function PUT(
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "STUDENT_UPDATE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     const { id } = await params;
 
@@ -36,6 +46,15 @@ export async function PUT(
     });
 
     if (!student) {
+      logAuditEvent({
+        action: "STUDENT_UPDATE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        targetType: "STUDENT",
+        targetId: id,
+        details: { reason: "student_not_found" },
+      });
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
@@ -63,8 +82,23 @@ export async function PUT(
       },
     });
 
+    logAuditEvent({
+      action: "STUDENT_UPDATE",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "STUDENT",
+      targetId: id,
+      details: { status: updated.user.status },
+    });
+
     return NextResponse.json(updated);
   } catch (error: any) {
+    logAuditEvent({
+      action: "STUDENT_UPDATE",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     if (error.code === "P2002") {
       return NextResponse.json({ error: "Email or roll number already exists" }, { status: 400 });
     }
@@ -87,18 +121,49 @@ export async function DELETE(
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "STUDENT_DELETE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     const { id } = await params;
     const student = await prisma.student.findUnique({ where: { id } });
     if (!student) {
+      logAuditEvent({
+        action: "STUDENT_DELETE",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        targetType: "STUDENT",
+        targetId: id,
+        details: { reason: "student_not_found" },
+      });
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
     await prisma.user.delete({ where: { id: student.userId } });
+    logAuditEvent({
+      action: "STUDENT_DELETE",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "STUDENT",
+      targetId: id,
+    });
 
     return NextResponse.json({ message: "Student deleted successfully" });
   } catch (error) {
+    logAuditEvent({
+      action: "STUDENT_DELETE",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     return NextResponse.json({ error: "Failed to delete student" }, { status: 500 });
   }
 }

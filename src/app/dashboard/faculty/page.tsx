@@ -25,7 +25,7 @@ export default function FacultyPage() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [newFaculty, setNewFaculty] = useState({
-    name: "", email: "", employeeId: "", departmentId: "", designation: "Assistant Professor",
+    name: "", email: "", password: "", employeeId: "", departmentId: "", designation: "Assistant Professor",
   });
 
   useEffect(() => { fetchFaculty(); fetchDepartments(); }, [search]);
@@ -56,7 +56,7 @@ export default function FacultyPage() {
       });
       if (res.ok) {
         setShowAddForm(false);
-        setNewFaculty({ name: "", email: "", employeeId: "", departmentId: "", designation: "Assistant Professor" });
+        setNewFaculty({ name: "", email: "", password: "", employeeId: "", departmentId: "", designation: "Assistant Professor" });
         addToast("Faculty added successfully");
         fetchFaculty();
       } else {
@@ -122,6 +122,10 @@ export default function FacultyPage() {
               <div>
                 <label style={{ fontSize: "13px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>Employee ID</label>
                 <input className="input-field" placeholder="FAC010" value={newFaculty.employeeId} onChange={(e) => setNewFaculty({ ...newFaculty, employeeId: e.target.value })} required />
+              </div>
+              <div>
+                <label style={{ fontSize: "13px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>Initial Password</label>
+                <input className="input-field" type="password" placeholder="Min 8 characters" value={newFaculty.password} onChange={(e) => setNewFaculty({ ...newFaculty, password: e.target.value })} required minLength={8} />
               </div>
               <div>
                 <label style={{ fontSize: "13px", color: "#94a3b8", display: "block", marginBottom: "6px" }}>Department</label>

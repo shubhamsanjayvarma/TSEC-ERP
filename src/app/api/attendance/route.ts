@@ -5,6 +5,8 @@ import { validateRequest, markAttendanceSchema, validateQueryParam } from "@/lib
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 import { checkCsrf } from "@/lib/csrf";
 import { getSessionUser, unauthorizedResponse, requireRole } from "@/lib/auth-helpers";
+import { canFacultyActForFacultyId, canFacultyManageAssignedSubject } from "@/lib/authz";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,17 +20,81 @@ export async function POST(request: NextRequest) {
     const session = await getSessionUser(request);
     if (!session) return unauthorizedResponse();
     const roleError = requireRole(session, "ADMIN", "FACULTY");
-    if (roleError) return roleError;
+    if (roleError) {
+      logAuditEvent({
+        action: "ATTENDANCE_MARK",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "forbidden_role" },
+      });
+      return roleError;
+    }
 
     const validation = await validateRequest(request, markAttendanceSchema);
     if (!validation.success) return validation.response;
     const { subjectId, facultyId, date, records } = validation.data;
 
+    if (session.role === "FACULTY" && !canFacultyActForFacultyId(session.facultyId, facultyId)) {
+      logAuditEvent({
+        action: "ATTENDANCE_MARK",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        targetType: "FACULTY",
+        targetId: facultyId,
+        details: { reason: "faculty_id_spoof_attempt" },
+      });
+      return NextResponse.json(
+        { error: "Faculty can only mark attendance for their own account" },
+        { status: 403 }
+      );
+    }
+
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      logAuditEvent({
+        action: "ATTENDANCE_MARK",
+        outcome: "FAILURE",
+        actorId: session.userId,
+        actorRole: session.role,
+        details: { reason: "invalid_date", date },
+      });
+      return NextResponse.json({ error: "Invalid attendance date" }, { status: 400 });
+    }
+
+    // Faculty can mark attendance only for assigned subjects.
+    if (session.role === "FACULTY") {
+      const assignment = await prisma.subjectAssignment.findUnique({
+        where: {
+          facultyId_subjectId: {
+            facultyId: session.facultyId!,
+            subjectId,
+          },
+        },
+      });
+      if (!assignment || !canFacultyManageAssignedSubject(session.facultyId, [assignment.facultyId])) {
+        logAuditEvent({
+          action: "ATTENDANCE_MARK",
+          outcome: "FAILURE",
+          actorId: session.userId,
+          actorRole: session.role,
+          targetType: "SUBJECT",
+          targetId: subjectId,
+          details: { reason: "subject_not_assigned" },
+        });
+        return NextResponse.json(
+          { error: "You are not assigned to this subject" },
+          { status: 403 }
+        );
+      }
+    }
+
     const attendanceData = records.map((r: any) => ({
       studentId: r.studentId,
       subjectId,
       facultyId,
-      date: new Date(date),
+      date: parsedDate,
       status: r.status,
     }));
 
@@ -48,11 +114,26 @@ export async function POST(request: NextRequest) {
       results.push(record);
     }
 
+    logAuditEvent({
+      action: "ATTENDANCE_MARK",
+      outcome: "SUCCESS",
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: "SUBJECT",
+      targetId: subjectId,
+      details: { count: results.length, date: parsedDate.toISOString() },
+    });
+
     return NextResponse.json({
       message: `Attendance marked for ${results.length} students`,
       count: results.length,
     });
   } catch (error) {
+    logAuditEvent({
+      action: "ATTENDANCE_MARK",
+      outcome: "FAILURE",
+      details: { reason: "server_error" },
+    });
     console.error("Mark attendance error:", error);
     return NextResponse.json({ error: "Failed to mark attendance" }, { status: 500 });
   }
@@ -78,6 +159,8 @@ export async function GET(request: NextRequest) {
     // IDOR: Students can only see their own attendance
     if (session.role === "STUDENT" && session.studentId) {
       where.studentId = session.studentId;
+    } else if (session.role === "FACULTY" && session.facultyId) {
+      where.facultyId = session.facultyId;
     } else if (studentId) {
       where.studentId = studentId;
     }
