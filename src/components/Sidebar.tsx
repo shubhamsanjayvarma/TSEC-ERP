@@ -92,11 +92,17 @@ const studentLinks: SidebarLink[] = [
   { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
 ];
 
-function SidebarItem({ link, pathname }: { link: SidebarLink; pathname: string }) {
-  const [isOpen, setIsOpen] = useState(
-    link.subLinks?.some(sub => pathname === sub.href) || false
-  );
-
+function SidebarItem({ 
+  link, 
+  pathname, 
+  isOpen, 
+  onToggle 
+}: { 
+  link: SidebarLink; 
+  pathname: string; 
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   const isActive = link.href 
     ? pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href))
     : link.subLinks?.some(sub => pathname === sub.href);
@@ -105,7 +111,7 @@ function SidebarItem({ link, pathname }: { link: SidebarLink; pathname: string }
     return (
       <div>
         <div
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={onToggle}
           style={{
             display: "flex",
             alignItems: "center",
@@ -211,6 +217,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const role = (session?.user as any)?.role;
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
   const links =
     role === "ADMIN"
@@ -218,6 +225,16 @@ export default function Sidebar() {
       : role === "FACULTY"
       ? facultyLinks
       : studentLinks;
+
+  // Set initial open section based on current path
+  React.useEffect(() => {
+    const activeSection = links.find(link => 
+      link.subLinks?.some(sub => pathname === sub.href)
+    );
+    if (activeSection) {
+      setOpenSection(activeSection.label);
+    }
+  }, [pathname, role]);
 
   return (
     <aside
@@ -318,7 +335,13 @@ export default function Sidebar() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             {links.map((link, idx) => (
-              <SidebarItem key={link.label + idx} link={link} pathname={pathname} />
+              <SidebarItem 
+                key={link.label + idx} 
+                link={link} 
+                pathname={pathname} 
+                isOpen={openSection === link.label}
+                onToggle={() => setOpenSection(openSection === link.label ? null : link.label)}
+              />
             ))}
           </div>
         </div>
