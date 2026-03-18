@@ -14,6 +14,7 @@ type SidebarLink = {
 
 const adminLinks: SidebarLink[] = [
   { href: "/dashboard", label: "Home", icon: "dashboard" },
+<<<<<<< HEAD
   { href: "/dashboard/students", label: "Students", icon: "school" },
   { href: "/dashboard/faculty", label: "Faculty", icon: "groups" },
   { href: "/dashboard/departments", label: "Departments", icon: "apartment" },
@@ -22,14 +23,58 @@ const adminLinks: SidebarLink[] = [
   { href: "/dashboard/exams", label: "Exams", icon: "quiz" },
   { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
   { href: "/dashboard/feedback", label: "Feedback", icon: "reviews" },
+=======
+  { 
+    label: "Users & Staff", icon: "manage_accounts", 
+    subLinks: [
+      { href: "/dashboard/students", label: "Manage Students" },
+      { href: "/dashboard/faculty", label: "Manage Faculty" }
+    ]
+  },
+  { 
+    label: "Academics", icon: "apartment", 
+    subLinks: [
+      { href: "/dashboard/departments", label: "Departments" },
+      { href: "/dashboard/subjects", label: "Subjects" }
+    ]
+  },
+  { 
+    label: "Operations", icon: "rule", 
+    subLinks: [
+      { href: "/dashboard/attendance", label: "Attendance Overview" },
+      { href: "/dashboard/exams", label: "Manage Exams" }
+    ]
+  },
+  { 
+    label: "Communications", icon: "campaign", 
+    subLinks: [
+      { href: "/dashboard/notices", label: "Manage Notices" }
+    ]
+  }
+>>>>>>> 00bfa95a603ad922511238600a5e437fb31bca74
 ];
 
 const facultyLinks: SidebarLink[] = [
   { href: "/dashboard", label: "Home", icon: "dashboard" },
-  { href: "/dashboard/attendance", label: "Mark Attendance", icon: "fact_check" },
-  { href: "/dashboard/exams", label: "Upload Marks", icon: "quiz" },
-  { href: "/dashboard/subjects", label: "My Subjects", icon: "book" },
-  { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
+  { 
+    label: "My Academics", icon: "school", 
+    subLinks: [
+      { href: "/dashboard/subjects", label: "My Subjects" },
+      { href: "/dashboard/attendance", label: "Mark Attendance" }
+    ]
+  },
+  { 
+    label: "Assessments", icon: "quiz", 
+    subLinks: [
+      { href: "/dashboard/exams", label: "Upload Marks" }
+    ]
+  },
+  { 
+    label: "Communications", icon: "campaign", 
+    subLinks: [
+      { href: "/dashboard/notices", label: "Notices" }
+    ]
+  }
 ];
 
 const studentLinks: SidebarLink[] = [
