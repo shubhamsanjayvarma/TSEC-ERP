@@ -14,16 +14,6 @@ type SidebarLink = {
 
 const adminLinks: SidebarLink[] = [
   { href: "/dashboard", label: "Home", icon: "dashboard" },
-<<<<<<< HEAD
-  { href: "/dashboard/students", label: "Students", icon: "school" },
-  { href: "/dashboard/faculty", label: "Faculty", icon: "groups" },
-  { href: "/dashboard/departments", label: "Departments", icon: "apartment" },
-  { href: "/dashboard/subjects", label: "Subjects", icon: "book" },
-  { href: "/dashboard/attendance", label: "Attendance", icon: "fact_check" },
-  { href: "/dashboard/exams", label: "Exams", icon: "quiz" },
-  { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
-  { href: "/dashboard/feedback", label: "Feedback", icon: "reviews" },
-=======
   { 
     label: "Users & Staff", icon: "manage_accounts", 
     subLinks: [
@@ -48,10 +38,10 @@ const adminLinks: SidebarLink[] = [
   { 
     label: "Communications", icon: "campaign", 
     subLinks: [
-      { href: "/dashboard/notices", label: "Manage Notices" }
+      { href: "/dashboard/notices", label: "Manage Notices" },
+      { href: "/dashboard/feedback", label: "User Feedback" }
     ]
   }
->>>>>>> 00bfa95a603ad922511238600a5e437fb31bca74
 ];
 
 const facultyLinks: SidebarLink[] = [
