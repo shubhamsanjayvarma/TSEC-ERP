@@ -21,6 +21,7 @@ const adminLinks: SidebarLink[] = [
   { href: "/dashboard/attendance", label: "Attendance", icon: "fact_check" },
   { href: "/dashboard/exams", label: "Exams", icon: "quiz" },
   { href: "/dashboard/notices", label: "Notices", icon: "campaign" },
+  { href: "/dashboard/feedback", label: "Feedback", icon: "reviews" },
 ];
 
 const facultyLinks: SidebarLink[] = [

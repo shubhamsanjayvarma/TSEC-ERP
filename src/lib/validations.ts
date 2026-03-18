@@ -86,6 +86,33 @@ export const createNoticeSchema = z.object({
   targetRole: z.enum(["ADMIN", "FACULTY", "STUDENT", "ACCOUNTS"]).nullable().optional(),
 });
 
+// ========== Feedback Schemas ==========
+
+export const createFeedbackSchema = z.object({
+  type: z.enum(["LECTURE", "PRACTICAL", "EXPERT_GUEST"]),
+  subjectName: z.string().min(1, "Subject name is required").max(200),
+  facultyName: z.string().min(1, "Faculty name is required").max(200),
+  rating: z.number().int().min(1, "Rating must be 1-5").max(5, "Rating must be 1-5"),
+  comment: z.string().min(1, "Comment is required").max(2000),
+  anonymous: z.boolean().optional(),
+});
+
+// ========== Class List Schemas ==========
+
+export const createClassListSchema = z.object({
+  name: z.string().min(1, "List name is required").max(100),
+  description: z.string().max(500).optional(),
+  subjectId: z.string().optional(),
+  studentIds: z.array(z.string().min(1)).min(1, "At least 1 student required"),
+});
+
+export const updateClassListSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  subjectId: z.string().nullable().optional(),
+  studentIds: z.array(z.string().min(1)).optional(),
+});
+
 // ========== Exam Schemas ==========
 
 export const createExamSchema = z.object({

@@ -55,6 +55,8 @@ model Student {
   enrollments  Enrollment[]
   attendances  Attendance[]
   marks        Mark[]
+  feedbacks    Feedback[]
+  classListEntries ClassListStudent[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -72,6 +74,7 @@ model Faculty {
 
   subjects    SubjectAssignment[]
   attendances Attendance[]
+  classLists  ClassList[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -90,6 +93,7 @@ model Subject {
   assignments  SubjectAssignment[]
   attendances  Attendance[]
   exams        Exam[]
+  classLists   ClassList[]
   createdAt    DateTime     @default(now())
 }
 
@@ -184,4 +188,51 @@ model Notice {
   targetRole Role?
   createdBy String
   createdAt DateTime @default(now())
+}
+
+model Feedback {
+  id          String       @id @default(cuid())
+  type        FeedbackType
+  subjectName String
+  facultyName String
+  rating      Int
+  comment     String
+  anonymous   Boolean      @default(true)
+
+  studentId   String
+  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime     @default(now())
+}
+
+enum FeedbackType {
+  LECTURE
+  PRACTICAL
+  EXPERT_GUEST
+}
+
+model ClassList {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id])
+
+  facultyId   String
+  faculty     Faculty  @relation(fields: [facultyId], references: [id])
+
+  students    ClassListStudent[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ClassListStudent {
+  id          String    @id @default(cuid())
+  classListId String
+  classList   ClassList @relation(fields: [classListId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classListId, studentId])
 }

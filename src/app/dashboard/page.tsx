@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface DashboardStats {
   totalStudents: number;
@@ -17,6 +18,7 @@ export default function DashboardPage() {
   const role = (session?.user as any)?.role;
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recentFeedback, setRecentFeedback] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -34,6 +36,23 @@ export default function DashboardPage() {
     }
     fetchStats();
   }, []);
+
+  // Fetch recent feedback for admin (with 10s polling)
+  useEffect(() => {
+    if (role !== "ADMIN") return;
+    async function fetchFeedback() {
+      try {
+        const res = await fetch("/api/feedback");
+        if (res.ok) {
+          const data = await res.json();
+          setRecentFeedback(data.slice(0, 5));
+        }
+      } catch { /* silent */ }
+    }
+    fetchFeedback();
+    const interval = setInterval(fetchFeedback, 10000);
+    return () => clearInterval(interval);
+  }, [role]);
 
   const statCards = [
     {
@@ -72,6 +91,12 @@ export default function DashboardPage() {
       : role === "FACULTY"
       ? [statCards[0], statCards[2], statCards[3]]
       : statCards;
+
+  const typeColors: Record<string, string> = {
+    LECTURE: "#2563eb",
+    PRACTICAL: "#7c3aed",
+    EXPERT_GUEST: "#059669",
+  };
 
   return (
     <div>
@@ -156,12 +181,13 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Attendance summary card */}
+      {/* Attendance + Notices row */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: "20px",
+          marginBottom: "20px",
         }}
       >
         {/* Average Attendance */}
@@ -270,6 +296,97 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Recent Feedback — Admin Only */}
+      {role === "ADMIN" && (
+        <div style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <h3
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#64748b" }}>reviews</span>
+              Recent Feedback
+              <span style={{ fontSize: "10px", fontWeight: 600, color: "#94a3b8", background: "#f1f5f9", padding: "2px 8px", borderRadius: "9999px" }}>LIVE</span>
+            </h3>
+            <Link
+              href="/dashboard/feedback"
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#2563eb",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              View All
+              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>arrow_forward</span>
+            </Link>
+          </div>
+          {recentFeedback.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {recentFeedback.map((fb) => (
+                <div
+                  key={fb.id}
+                  style={{
+                    padding: "14px",
+                    borderRadius: "12px",
+                    background: "#f8fafc",
+                    borderLeft: `3px solid ${typeColors[fb.type] || "#2563eb"}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "14px", fontWeight: 600, color: "#0f172a" }}>
+                        {fb.subjectName}
+                      </span>
+                      <span style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        color: typeColors[fb.type] || "#2563eb",
+                        background: `${typeColors[fb.type] || "#2563eb"}14`,
+                        padding: "2px 8px",
+                        borderRadius: "9999px",
+                        textTransform: "uppercase",
+                      }}>
+                        {fb.type.replace("_", " ")}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#64748b" }}>
+                      {fb.facultyName} • {fb.studentName}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "1px" }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <span key={s} style={{ fontSize: "14px", color: s <= fb.rating ? "#f59e0b" : "#e2e8f0" }}>★</span>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", marginLeft: "8px" }}>
+                      {new Date(fb.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: "13px", color: "#94a3b8", textAlign: "center", padding: "20px" }}>
+              No feedback received yet
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
